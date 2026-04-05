@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>すくば市 防災・Jアラート統合システム</title>
+    <style>
+        body { background: #1a1a1a; color: #eee; font-family: 'MS Gothic', sans-serif; margin: 0; padding: 15px; transition: 0.3s; }
+        .console { background: #333; border: 5px solid #555; border-radius: 10px; display: inline-block; padding: 20px; width: 700px; box-shadow: 0 0 50px rgba(0,0,0,0.8); text-align: center; }
+        
+        .alert-bg { animation: alert-flash 0.5s infinite; }
+        @keyframes alert-flash { 0%, 100% { background: #1a1a1a; } 50% { background: #600; } }
+        .j-alert-bg { animation: j-flash 0.4s infinite; }
+        @keyframes j-flash { 0%, 100% { background: #000; } 50% { background: #0044cc; } }
+
+        .display { background: #000; color: #f1c40f; padding: 15px; border: 4px inset #444; margin-bottom: 20px; font-size: 1.5rem; font-weight: bold; min-height: 70px; display: flex; align-items: center; justify-content: center; text-align: center; border-radius: 5px; line-height: 1.3; }
+        .display.danger { color: #ff0; text-shadow: 0 0 10px #f00; }
+
+        .section-title { font-size: 12px; color: #aaa; margin: 10px 0 5px 5px; text-align: left; border-left: 3px solid #666; padding-left: 8px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .btn { padding: 15px; font-weight: bold; cursor: pointer; border: 3px solid #444; border-radius: 6px; color: white; transition: 0.1s; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+        
+        .btn-test { background: #5d6d7e; border-color: #abb2b9; }
+        .btn-quake { background: #d35400; border-color: #e67e22; }
+        .btn-j { background: #c0392b; border-color: #e74c3c; font-size: 16px; }
+        .btn-chime { background: #2c3e50; }
+        .stop-btn { grid-column: span 2; background: #222; border-color: #555; color: #fff; font-size: 16px; margin-top: 10px; }
+        .stop-btn:active { background: #f00; border-color: #fff; }
+
+        /* 自由入力エリア */
+        .input-area { grid-column: span 2; background: #222; padding: 10px; border-radius: 5px; border: 1px solid #444; display: flex; gap: 5px; }
+        #custom-text { flex: 1; padding: 10px; background: #000; color: #0f0; border: 1px solid #444; font-family: inherit; font-size: 14px; }
+        .btn-speak { background: #27ae60; border-color: #2ecc71; width: 100px; }
+
+        .btn:active { transform: scale(0.96); filter: brightness(1.2); }
+
+        .mic-box { margin-top: 15px; border: 2px dashed #666; padding: 8px; border-radius: 8px; }
+        #mic-btn { width: 100%; padding: 12px; background: #27ae60; border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 5px; }
+        #mic-btn.active { background: #c0392b; box-shadow: 0 0 20px #f00; }
+
+        .credits-container { margin-top: 25px; padding: 15px; background: #222; border: 1px solid #444; border-radius: 5px; color: #bbb; font-size: 12px; text-align: left; line-height: 1.8; }
+        .credits-container strong { color: #f1c40f; }
+        .credits-container a { color: #3498db; text-decoration: none; }
+    </style>
+</head>
+<body id="bg">
+
+<div class="console">
+    <div style="color: #888; font-size: 11px; margin-bottom: 5px;">SUKUBA CITY EMERGENCY BROADCAST CONTROL</div>
+    <div class="display" id="screen">【システム待機中】<br>画面をクリックして起動</div>
+
+    <div class="section-title">▼ 自由放送（好きな文字を入力して放送）</div>
+    <div class="input-area">
+        <input type="text" id="custom-text" placeholder="ここに放送したい文字を打つ..." value="こちらは、防災すくばです。">
+        <div class="btn btn-speak" onclick="freeSpeak()">📢 放送</div>
+    </div>
+
+    <div class="section-title">▼ 訓練放送 (テストアナウンスあり)</div>
+    <div class="grid">
+        <div class="btn btn-test" onclick="triggerAlert('quake', true)">📢 地震速報(テスト)</div>
+        <div class="btn btn-test" onclick="triggerAlert('jalert', true)">🚀 Jアラート(テスト)</div>
+    </div>
+
+    <div class="section-title">▼ 緊急放送 (即時警報)</div>
+    <div class="grid">
+        <div class="btn btn-quake" onclick="triggerAlert('quake', false)">⚠️ 緊急地震速報</div>
+        <div class="btn btn-j" onclick="triggerAlert('jalert', false)">☢️ Jアラート(本番)</div>
+    </div>
+
+    <div class="section-title">▼ 定時放送・管理</div>
+    <div class="grid">
+        <div class="btn btn-chime" onclick="playChime('17時：夕焼け小焼け')">🌆 17時：定時放送</div>
+        <div class="btn stop-btn" onclick="resetSystem()">⏹️ 全放送強制停止 (RESET)</div>
+    </div>
+
+    <div class="mic-box">
+        <button id="mic-btn">🎙️ 臨時マイク放送 (PUSH TO TALK)</button>
+    </div>
+
+    <div class="credits-container">
+        <strong>【システム・音源クレジット】</strong><br>
+        ・システム制作：ディスコードID『soukun2525』<br>
+        ・音源提供元https://ringtoneja.com/" target="_blank">RingtoneJa</a> (Jアラート・地震速報)<a href="https://pocket-se.info/">ポケットサウンド/効果音素材</a>（夕焼け小焼け）：<br>
+        ・定時放送：five-melody.mp3<br>
+        <span style="color: #777; font-size: 10px;">※このシステムはRobloxの某市のRP専用です。</span>
+    </div>
+</div>
+
+<audio id="snd-chime" src="five-melody.mp3"></audio>
+<audio id="snd-jalert" src="jアラート-音-弾道ミサイル情報-ringtoneja.com.mp3"></audio>
+<audio id="snd-quake" src="緊急地震速報-ringtoneja.com.mp3"></audio>
+<audio id="snd-quake-voice" src="緊急地震速報-音-02-ringtoneja.com.mp3"></audio>
+
+<script>
+    const screen = document.getElementById('screen');
+    const bg = document.getElementById('bg');
+
+    // 自由放送機能
+    function freeSpeak() {
+        const text = document.getElementById('custom-text').value;
+        if(!text) return;
+        stopAllAudio();
+        screen.innerText = "自由放送中...\n「" + text + "」";
+        const uttr = new SpeechSynthesisUtterance(text);
+        uttr.lang = 'ja-JP';
+        uttr.rate = 1.0;
+        window.speechSynthesis.speak(uttr);
+        uttr.onend = resetSystem;
+    }
+
+    function triggerAlert(type, isTest) {
+        stopAllAudio();
+        if (isTest) {
+            screen.innerText = "テストアナウンス中...";
+            const msg = new SpeechSynthesisUtterance("これより、テスト速報を流します。");
+            msg.lang = 'ja-JP';
+            msg.onend = () => { startActualAlert(type); };
+            window.speechSynthesis.speak(msg);
+        } else {
+            startActualAlert(type);
+        }
+    }
+
+    function startActualAlert(type) {
+        if (type === 'jalert') {
+            screen.innerHTML = "<span style='color:red'>⚠️ 00（Jアラート）が流れます<br>ご注意ください！</span>";
+            screen.classList.add('danger');
+            setTimeout(() => {
+                if(!screen.classList.contains('danger')) return;
+                bg.classList.add('j-alert-bg');
+                screen.innerText = "【国民保護情報】\n弾道ミサイル情報";
+                document.getElementById('snd-jalert').play();
+            }, 3000);
+        } else {
+            bg.classList.add('alert-bg');
+            screen.innerText = "【緊急地震速報】\n強い揺れに警戒！";
+            screen.classList.add('danger');
+            const q1 = document.getElementById('snd-quake');
+            const q2 = document.getElementById('snd-quake-voice');
+            q1.play();
+            q1.onended = () => { q2.play(); };
+        }
+    }
+
+    function playChime(name) {
+        stopAllAudio();
+        screen.innerText = "定時放送中：\n" + name;
+        const chime = document.getElementById('snd-chime');
+        chime.play();
+        chime.onended = resetSystem;
+    }
+
+    function stopAllAudio() {
+        window.speechSynthesis.cancel();
+        document.querySelectorAll('audio').forEach(a => { 
+            a.pause(); a.currentTime = 0; a.onended = null;
+        });
+    }
+
+    function resetSystem() {
+        stopAllAudio();
+        bg.className = "";
+        screen.className = "display";
+        screen.innerText = "【システム待機中】";
+    }
+
+    window.onclick = () => { if(screen.innerText.includes("クリック")) resetSystem(); };
+
+    let audioCtx, stream, source;
+    const mBtn = document.getElementById('mic-btn');
+    mBtn.onmousedown = async function() {
+        try {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            source = audioCtx.createMediaStreamSource(stream);
+            const filter = audioCtx.createBiquadFilter(); filter.type = 'bandpass'; filter.frequency.value = 1200;
+            const delay = audioCtx.createDelay(); delay.delayTime.value = 0.4;
+            const feedback = audioCtx.createGain(); feedback.gain.value = 0.3;
+            source.connect(filter); filter.connect(audioCtx.destination);
+            filter.connect(delay); delay.connect(feedback); feedback.connect(delay); delay.connect(audioCtx.destination);
+            this.classList.add('active'); this.innerText = "🎤 放送中...";
+        } catch(e) {}
+    };
+    window.onmouseup = function() {
+        if(audioCtx) {
+            audioCtx.close(); stream.getTracks().forEach(t => t.stop());
+            mBtn.classList.remove('active'); mBtn.innerText = "🎙️ マイク放送 (PUSH TO TALK)";
+        }
+    };
+</script>
+</body>
+</html>
